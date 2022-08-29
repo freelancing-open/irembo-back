@@ -23,12 +23,15 @@ public class Users implements Serializable {
 
     private String firstName;
     private String lastName;
+    @Column(unique = true, nullable = false)
     private String email;
     private String password;
     private String gender;
+    @Column(name = "date-of-birth")
     private Date dob;
     private String maritalStatus;
     private String nationality;
+    @Column(name = "profile-picture")
     private String profilePic;
 
     @JoinColumn(name = "roleName", referencedColumnName = "name")
