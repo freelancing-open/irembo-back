@@ -1,7 +1,5 @@
 package com.example.iremboback.config.security;
 
-import java.util.ArrayList;
-
 import com.example.iremboback.model.Users;
 import com.example.iremboback.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +7,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
 
 /**
  *

@@ -3,10 +3,11 @@ package com.example.iremboback.config.security;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
-import java.util.Date;
-import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -24,8 +25,6 @@ public class JWTUtil {
     Date expDate;
     Date refTokenExpDate;
 
-    private String jwtToken;
-
     public String createToken(String user) throws Exception {
         //String jwtID = UUID.randomUUID().toString();
         initDate();
@@ -33,7 +32,7 @@ public class JWTUtil {
             //HMAC
             Algorithm algorithmHS = Algorithm.HMAC256(config.getSignatureKey());
 
-            jwtToken = JWT.create().withIssuedAt(iat).withExpiresAt(expDate).withIssuer(config.getIssue())
+            String jwtToken = JWT.create().withIssuedAt(iat).withExpiresAt(expDate).withIssuer(config.getIssue())
                     .withAudience(config.getAudience()).withSubject(user)
                     .sign(algorithmHS);
 
