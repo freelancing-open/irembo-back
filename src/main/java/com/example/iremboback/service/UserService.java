@@ -9,6 +9,8 @@ public interface UserService {
 
      Optional<Users> create(Users user);
 
+     Optional<Users> createAdmin(Users user);
+
      Optional<Users> update(Users user);
 
      boolean delete(String email);
