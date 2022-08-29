@@ -27,15 +27,26 @@ public class Users implements Serializable {
     private String email;
     private String password;
     private String gender;
-    @Column(name = "date-of-birth")
+    @Column(name = "date_of_birth")
     private Date dob;
     private String maritalStatus;
     private String nationality;
-    @Column(name = "profile-picture")
+    @Column(name = "profile_picture")
     private String profilePic;
 
     @JoinColumn(name = "roleName", referencedColumnName = "name")
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
     private Role roleName;
 
+    public Users(String firstName, String lastName, String email, String password, String gender, Date dob, String maritalStatus, String nationality, String profilePic) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.password = password;
+        this.gender = gender;
+        this.dob = dob;
+        this.maritalStatus = maritalStatus;
+        this.nationality = nationality;
+        this.profilePic = profilePic;
+    }
 }

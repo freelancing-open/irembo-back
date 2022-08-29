@@ -2,6 +2,7 @@ package com.example.iremboback.service.Implementation;
 
 import com.example.iremboback.model.Users;
 import com.example.iremboback.repository.UserRepository;
+import com.example.iremboback.service.RoleService;
 import com.example.iremboback.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserRepository userDB;
 
+    @Autowired
+    private RoleService roleService;
+
     @Override
     public Optional<Users> auth(String email, String password) {
         Optional<Users> authUser = userDB.findAll().stream().filter(u -> u.getEmail().equals(email) && u.getPassword().equals(password)).findFirst();
@@ -24,6 +28,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Optional<Users> create(Users user) {
+        user.setRoleName(roleService.getAllRoles().get(0));
+        return Optional.of(userDB.save(user));
+    }
+
+    @Override
+    public Optional<Users> createAdmin(Users user) {
+        user.setRoleName(roleService.getAllRoles().get(1));
         return Optional.of(userDB.save(user));
     }
 

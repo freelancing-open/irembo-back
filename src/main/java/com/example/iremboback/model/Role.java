@@ -1,6 +1,10 @@
 package com.example.iremboback.model;
 
-import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -22,8 +26,14 @@ public class Role implements Serializable {
     private String name;
     private String description;
 
+    @JsonIgnore
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "roleName")
     private List<Users> users;
+
+    public Role(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
 
     @Override
     public String toString() {
