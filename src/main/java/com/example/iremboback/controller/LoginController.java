@@ -1,12 +1,11 @@
 package com.example.iremboback.controller;
 
 import com.example.iremboback.config.security.JWTUtil;
-import com.example.iremboback.dto.ApiError;
-import com.example.iremboback.dto.ApiRequest;
-import com.example.iremboback.dto.ApiResponse;
-import com.example.iremboback.dto.ApiSuccess;
+import com.example.iremboback.dto.*;
 import com.example.iremboback.model.Users;
 import com.example.iremboback.service.UserService;
+import com.example.iremboback.validation.EmailValidation;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -15,7 +14,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -25,10 +27,16 @@ public class LoginController {
     private AuthenticationManager authenticationManager;
 
     @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
     private JWTUtil jwtUtil;
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private EmailValidation emailValidation;
 
     private ApiError error;
     private ApiResponse response;
@@ -36,12 +44,9 @@ public class LoginController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> verifyUser(@RequestBody ApiRequest request) {
-        response = new ApiResponse();
-        error = new ApiError();
-        success = new ApiSuccess();
+        init();
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPwd()));
-
             //user details ===>
             final String jwt = jwtUtil.createToken(request.getEmail());
 
@@ -64,13 +69,55 @@ public class LoginController {
     @GetMapping(path = "/user", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getUser(Authentication authentication) {
         error = new ApiError();
-        System.out.println("Principal: " + authentication.getName());
-        Users users = userService.getUser(authentication.getName()).get();
-        if (users == null) {
+        UserDto userDto = new UserDto();
+        Optional<Users> users = userService.getUser(authentication.getName());
+        if (users.isEmpty()) {
             error.setErrorCode(403);
             error.setErrorMessage("Unauthorized Access");
             return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
         }
-        return new ResponseEntity<>(users, HttpStatus.OK);
+        BeanUtils.copyProperties(users.get(), userDto);
+        userDto.setRole(users.get().getRoleName().getName());
+        return new ResponseEntity<>(userDto, HttpStatus.OK);
+    }
+
+    @PostMapping(path = "/create", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE )
+    public ResponseEntity<?> createUser(@RequestBody Users user){
+        init();
+        if(emailValidation(user)){
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        }
+        UserDto userDto = new UserDto();
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        Optional<Users> created = userService.create(user);
+        if(created.isPresent()) {
+            BeanUtils.copyProperties(created.get(), userDto);
+            userDto.setRole(created.get().getRoleName().getName());
+            success.setCode(HttpStatus.CREATED.value());
+            response.setApiSuccess(success);
+            response.setData(userDto);
+        }else{
+            error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
+            error.setErrorMessage("Not Implemented");
+            response.setApiError(error);
+        }
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    private void init(){
+        error = new ApiError();
+        response = new ApiResponse();
+        success = new ApiSuccess();
+    }
+
+    private boolean emailValidation(Users u){
+        boolean validationResult = emailValidation.isAlreadyRegister(u.getEmail());
+        if(validationResult){
+            error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
+            error.setErrorMessage("Email Already Exist");
+            response.setApiError(error);
+            return true;
+        }
+        return false;
     }
 }

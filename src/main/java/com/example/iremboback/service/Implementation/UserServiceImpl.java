@@ -19,22 +19,18 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private RoleService roleService;
 
-    @Override
-    public Optional<Users> auth(String email, String password) {
-        Optional<Users> authUser = userDB.findAll().stream().filter(u -> u.getEmail().equals(email) && u.getPassword().equals(password)).findFirst();
-        if(authUser.isPresent()) return authUser;
-        return Optional.empty();
-    }
 
     @Override
     public Optional<Users> create(Users user) {
         user.setRoleName(roleService.getAllRoles().get(0));
+        user.setVerified(false);
         return Optional.of(userDB.save(user));
     }
 
     @Override
     public Optional<Users> createAdmin(Users user) {
         user.setRoleName(roleService.getAllRoles().get(1));
+        user.setVerified(true);
         return Optional.of(userDB.save(user));
     }
 

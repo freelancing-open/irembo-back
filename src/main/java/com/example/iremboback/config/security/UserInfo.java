@@ -8,7 +8,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  *
@@ -23,7 +23,8 @@ public class UserInfo implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String user) throws UsernameNotFoundException {
-        Users u = userService.getUser(user).get();
-        return new org.springframework.security.core.userdetails.User(u.getEmail(), u.getPassword(), new ArrayList<>());
+        Optional<Users> u = userService.getUser(user);
+        u.orElseThrow(() -> new UsernameNotFoundException("Incorrect Credentials"));
+        return new UsersDetail(u.get());
     }
 }

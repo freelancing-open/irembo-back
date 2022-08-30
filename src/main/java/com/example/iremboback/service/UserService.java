@@ -18,6 +18,4 @@ public interface UserService {
      List<Users> getUsers();
 
      Optional<Users> getUser(String email);
-
-     Optional<Users> auth(String email, String password);
 }

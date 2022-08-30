@@ -33,6 +33,7 @@ public class Users implements Serializable {
     private String nationality;
     @Column(name = "profile_picture")
     private String profilePic;
+    private boolean verified;
 
     @JoinColumn(name = "roleName", referencedColumnName = "name")
     @ManyToOne(optional = false, fetch = FetchType.EAGER)

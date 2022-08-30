@@ -9,6 +9,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Date;
 
@@ -21,6 +22,8 @@ public class IremboBackApplication implements ApplicationRunner {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public static void main(String[] args) {
         SpringApplication.run(IremboBackApplication.class, args);
@@ -35,8 +38,8 @@ public class IremboBackApplication implements ApplicationRunner {
         }
         boolean adminNotExist = userService.getUsers().stream().filter(user -> user.getRoleName().getName().equals("ADMIN")).findFirst().isEmpty();
         if(adminNotExist){
-            userService.createAdmin(new Users("Tester", "AD", "tester@admin.com", "pass@#", "M", new Date(), "Single", "Rwanda", "java.png"));
-            userService.createAdmin(new Users("Tester_Assist", "AD", "testerASS@admin.com", "pass@#1", "F", new Date(), "Single", "Rwanda", "java.png"));
+            userService.createAdmin(new Users("Tester", "AD", "tester@admin.com", passwordEncoder.encode("pass@#"), "M", new Date(), "Single", "Rwanda", "java.png"));
+            userService.createAdmin(new Users("Tester_Assist", "AD", "testerASS@admin.com",  passwordEncoder.encode("pass@#1"), "F", new Date(), "Single", "Rwanda", "java.png"));
             System.out.println("Administrators Created");
         }
     }

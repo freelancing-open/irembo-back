@@ -21,4 +21,5 @@ public class UserDto {
     private String maritalStatus;
     private String nationality;
     private String profilePic;
+    private String role;
 }
