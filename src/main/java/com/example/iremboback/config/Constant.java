@@ -6,6 +6,13 @@ public final class Constant {
 
     public final static String AUTH_PATH = "/api/v1/auth";
 
+    public final static String EMAIL_RESET_PASSWORD_LINK = "http://EMAIL-MICROSERVICE/email-microservice/api/v1/email-services/reset";
+
+    public final static String EMAIL_REGISTRATION_VERIFICATION_LINK = "http://EMAIL-MICROSERVICE/email-microservice/api/v1/email-services/verification";
+
+    public final static String EMAIL_OTP_LINK = "http://EMAIL-MICROSERVICE/email-microservice/api/v1/email-services/otp";
+
+
     public static String RANDOM_ALPHANUMERIC() {
         int leftLimit = 48; // numeral '0'
         int rightLimit = 122; // letter 'z'

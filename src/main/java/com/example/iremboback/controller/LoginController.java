@@ -126,7 +126,6 @@ public class LoginController {
     public ResponseEntity<?> resetPasswordFront(@PathVariable String email, HttpServletRequest request){
         //For Sending Email.
         init();
-        String emailServiceLink = "http://localhost:30/email-microservice/api/v1/email-services/reset";
         String resetPasswordLink = getSiteURL(request) + "/verify-reset?resetToken=";
         Optional<Users> users = userService.getUser(email);
         try{
@@ -142,7 +141,7 @@ public class LoginController {
                 emailDto.setLink(resetPasswordLink);
                 emailDto.setUsername(users.get().getFirstName());
 
-                return getResponseEntity(emailServiceLink);
+                return getResponseEntity(EMAIL_RESET_PASSWORD_LINK);
             }else{
                 error.setErrorCode(404);
                 error.setErrorMessage("User Doesn't Exist");
@@ -215,7 +214,6 @@ public class LoginController {
     public ResponseEntity<?> registrationConfirmationFront(@PathVariable String email, HttpServletRequest request){
         //For Sending Email.
         init();
-        String emailServiceLink = "http://localhost:30/email-microservice/api/v1/email-services/verification";
         String verificationLink = getSiteURL(request) + "/registration/"+email+"/verification?code=";
         Optional<Users> users = userService.getUser(email);
         try{
@@ -230,7 +228,7 @@ public class LoginController {
                 emailDto.setEmail(email);
                 emailDto.setLink(verificationLink);
 
-                return getResponseEntity(emailServiceLink);
+                return getResponseEntity(EMAIL_REGISTRATION_VERIFICATION_LINK);
             }else{
                 error.setErrorCode(404);
                 error.setErrorMessage("User Doesn't Exist");
@@ -294,7 +292,6 @@ public class LoginController {
     public ResponseEntity<?> multiFactorAuthenticationFront(@PathVariable String email){
         //For Sending Email.
         init();
-        String emailServiceLink = "http://localhost:30/email-microservice/api/v1/email-services/otp";
         Optional<Users> users = userService.getUser(email);
         if(users.isPresent()){
             Integer otp = RANDOM_NUMBER();
@@ -305,7 +302,7 @@ public class LoginController {
             emailDto.setEmail(email);
             emailDto.setOtp(otp);
 
-            return getResponseEntity(emailServiceLink);
+            return getResponseEntity(EMAIL_OTP_LINK);
         }else{
             error.setErrorCode(404);
             error.setErrorMessage("User Doesn't Exist");
