@@ -42,8 +42,7 @@ public class SecurityConfigurer {
         protected void configure(HttpSecurity http) throws Exception {
             http.antMatcher("/api/**").csrf().disable()
                     .authorizeRequests()
-                    .antMatchers("/api/v1/auth").permitAll()
-                    .antMatchers("/api/v1/auth/create").permitAll()
+                    .antMatchers("/api/v1/auth/**").permitAll()
                     .anyRequest().authenticated()
                     .and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 

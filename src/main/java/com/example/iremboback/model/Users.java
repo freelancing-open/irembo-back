@@ -33,7 +33,12 @@ public class Users implements Serializable {
     private String nationality;
     @Column(name = "profile_picture")
     private String profilePic;
-    private boolean verified;
+
+    private Integer otp; //For Multi-Factor Authentication Code
+    private boolean verified; // For Registration verification
+    private String verificationCode;  // For Registration verification code
+    private boolean tokenVerified;  // For Reset Password token verification
+    private String token;  // For Reset password verification
 
     @JoinColumn(name = "roleName", referencedColumnName = "name")
     @ManyToOne(optional = false, fetch = FetchType.EAGER)

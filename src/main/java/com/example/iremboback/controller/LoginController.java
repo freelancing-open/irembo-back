@@ -1,5 +1,10 @@
 package com.example.iremboback.controller;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.example.iremboback.config.security.JWTConstant;
 import com.example.iremboback.config.security.JWTUtil;
 import com.example.iremboback.dto.*;
 import com.example.iremboback.model.Users;
@@ -16,9 +21,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Optional;
 
+import static com.example.iremboback.config.Constant.*;
+
+
+@CrossOrigin("http://localhost:3000")
 @RestController
 @RequestMapping("/api/v1/auth")
 public class LoginController {
@@ -38,9 +49,16 @@ public class LoginController {
     @Autowired
     private EmailValidation emailValidation;
 
+    @Autowired
+    private JWTConstant config;
+
+    @Autowired
+    public RestTemplate restTemplate;
+
     private ApiError error;
     private ApiResponse response;
     private ApiSuccess success;
+    private EmailDto emailDto;
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> verifyUser(@RequestBody ApiRequest request) {
@@ -81,7 +99,7 @@ public class LoginController {
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }
 
-    @PostMapping(path = "/create", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE )
+    @PostMapping(path = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE )
     public ResponseEntity<?> createUser(@RequestBody Users user){
         init();
         if(emailValidation(user)){
@@ -104,10 +122,231 @@ public class LoginController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @GetMapping(path = "/reset/{email}", produces = MediaType.APPLICATION_JSON_VALUE )
+    public ResponseEntity<?> resetPasswordFront(@PathVariable String email, HttpServletRequest request){
+        //For Sending Email.
+        init();
+        String emailServiceLink = "http://localhost:30/email-microservice/api/v1/email-services/reset";
+        String resetPasswordLink = getSiteURL(request) + "/verify-reset?resetToken=";
+        Optional<Users> users = userService.getUser(email);
+        try{
+            if(users.isPresent()){
+
+                String token = jwtUtil.createToken(email);
+                resetPasswordLink = resetPasswordLink + token;
+
+                users.get().setToken(token);
+                userService.update(users.get());
+
+                emailDto.setEmail(email);
+                emailDto.setLink(resetPasswordLink);
+                emailDto.setUsername(users.get().getFirstName());
+
+                return getResponseEntity(emailServiceLink);
+            }else{
+                error.setErrorCode(404);
+                error.setErrorMessage("User Doesn't Exist");
+                response.setApiError(error);
+                return new ResponseEntity<>(response, HttpStatus.OK);
+            }
+        }catch(Exception ex){
+            System.err.println(ex.getMessage());
+            error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
+            error.setErrorMessage("Error Occurred. Try Back!");
+            response.setApiError(error);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+    }
+
+    @GetMapping(path = "/verify-reset", produces = MediaType.APPLICATION_JSON_VALUE )
+    public ResponseEntity<?> verifyPasswordResetLink(@RequestParam String resetToken){
+        //For Verify if Token has not expired password
+        init();
+        try {
+            Algorithm algorithm = Algorithm.HMAC256(config.getSignatureKey());
+
+            JWTVerifier verifier = JWT.require(algorithm)
+                    .withIssuer(config.getIssue()).withAudience(config.getAudience())
+                    .build(); //Reusable verifier instance
+
+            DecodedJWT jwt = verifier.verify(resetToken);
+
+            Optional<Users> user = userService.getUser(jwt.getSubject());
+            if(user.isPresent()){
+                success.setCode(HttpStatus.OK.value());
+                response.setApiSuccess(success);
+                response.setData(true);
+            }else{
+                error.setErrorCode(404);
+                error.setErrorMessage("Incorrect Reset Password Link");
+                response.setApiError(error);
+            }
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }catch(Exception ex){
+            System.err.println(ex.getMessage());
+            error.setErrorCode(HttpStatus.NOT_FOUND.value());
+            error.setErrorMessage("Link has Expired. Try Back!");
+            response.setApiError(error);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+    }
+
+    @PostMapping(path = "/reset/{email}", produces = MediaType.APPLICATION_JSON_VALUE )
+    public ResponseEntity<?> resetPasswordBack(@PathVariable String email, @RequestBody PassDto pwd){
+        //For Resetting password
+        init();
+        Optional<Users> users = userService.getUser(email);
+        if(users.isPresent()){
+            users.get().setPassword(passwordEncoder.encode(pwd.getPassword()));
+            userService.update(users.get());
+
+            success.setCode(HttpStatus.OK.value());
+            response.setApiSuccess(success);
+            response.setData(true);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+        error.setErrorCode(404);
+        error.setErrorMessage("User Doesn't Exist");
+        response.setApiError(error);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping(path = "/registration/verification/{email}", produces = MediaType.APPLICATION_JSON_VALUE )
+    public ResponseEntity<?> registrationConfirmationFront(@PathVariable String email, HttpServletRequest request){
+        //For Sending Email.
+        init();
+        String emailServiceLink = "http://localhost:30/email-microservice/api/v1/email-services/verification";
+        String verificationLink = getSiteURL(request) + "/registration/"+email+"/verification?code=";
+        Optional<Users> users = userService.getUser(email);
+        try{
+            if(users.isPresent()){
+
+                String code = RANDOM_ALPHANUMERIC();
+                verificationLink = verificationLink + code;
+
+                users.get().setVerificationCode(code);
+                userService.update(users.get());
+
+                emailDto.setEmail(email);
+                emailDto.setLink(verificationLink);
+
+                return getResponseEntity(emailServiceLink);
+            }else{
+                error.setErrorCode(404);
+                error.setErrorMessage("User Doesn't Exist");
+                response.setApiError(error);
+                return new ResponseEntity<>(response, HttpStatus.OK);
+            }
+        }catch(Exception ex){
+            System.err.println(ex.getMessage());
+            error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
+            error.setErrorMessage("Error Occurred. Try Back!");
+            response.setApiError(error);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+    }
+
+    private ResponseEntity<?> getResponseEntity(String emailServiceLink) {
+        Boolean result = restTemplate.postForEntity(emailServiceLink, emailDto, Boolean.class).getBody();
+
+        if(Boolean.TRUE.equals(result)){
+            success.setCode(HttpStatus.OK.value());
+            response.setApiSuccess(success);
+            response.setData("Link Send To Email");
+        }else {
+            error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
+            error.setErrorMessage("Error Occurred. Try Back!");
+            response.setApiError(error);
+        }
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping(path = "/registration/{email}/verification", produces = MediaType.APPLICATION_JSON_VALUE )
+    public ResponseEntity<?> registrationConfirmationBack(@PathVariable String email, @RequestParam String code){
+        //For checking and then changing account to verification
+        init();
+        Optional<Users> users = userService.getUser(email);
+        if(users.isPresent()){
+            if(users.get().getVerificationCode().equals(code)){
+
+                users.get().setVerificationCode(RANDOM_ALPHANUMERIC());
+                users.get().setVerified(true);
+                userService.update(users.get());
+
+                success.setCode(HttpStatus.OK.value());
+                response.setApiSuccess(success);
+                response.setData(true);
+            }else{
+                error.setErrorCode(404);
+                error.setErrorMessage("Incorrect Registration Link");
+                response.setApiError(error);
+            }
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }else{
+            error.setErrorCode(404);
+            error.setErrorMessage("User Doesn't Exist");
+            response.setApiError(error);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+    }
+
+    @GetMapping(path = "/mfa-verification/{email}", produces = MediaType.APPLICATION_JSON_VALUE )
+    public ResponseEntity<?> multiFactorAuthenticationFront(@PathVariable String email){
+        //For Sending Email.
+        init();
+        String emailServiceLink = "http://localhost:30/email-microservice/api/v1/email-services/otp";
+        Optional<Users> users = userService.getUser(email);
+        if(users.isPresent()){
+            Integer otp = RANDOM_NUMBER();
+
+            users.get().setOtp(otp);
+            userService.update(users.get());
+
+            emailDto.setEmail(email);
+            emailDto.setOtp(otp);
+
+            return getResponseEntity(emailServiceLink);
+        }else{
+            error.setErrorCode(404);
+            error.setErrorMessage("User Doesn't Exist");
+            response.setApiError(error);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+    }
+
+    @GetMapping(path = "/mfa-verification/{email}/{code}", produces = MediaType.APPLICATION_JSON_VALUE )
+    public ResponseEntity<?> multiFactorAuthenticationBack(@PathVariable String email, @PathVariable Integer code){
+        //For validating user to access the system
+        init();
+        Optional<Users> users = userService.getUser(email);
+        if(users.isPresent()){
+            if(users.get().getOtp().intValue() == code.intValue()){
+
+                users.get().setOtp(RANDOM_NUMBER());
+                userService.update(users.get());
+
+                success.setCode(HttpStatus.OK.value());
+                response.setApiSuccess(success);
+                response.setData(true);
+            }else{
+                error.setErrorCode(404);
+                error.setErrorMessage("Incorrect OTP Code");
+                response.setApiError(error);
+            }
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }else{
+            error.setErrorCode(404);
+            error.setErrorMessage("User Doesn't Exist");
+            response.setApiError(error);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+    }
+
     private void init(){
         error = new ApiError();
         response = new ApiResponse();
         success = new ApiSuccess();
+        emailDto = new EmailDto();
     }
 
     private boolean emailValidation(Users u){
@@ -119,5 +358,11 @@ public class LoginController {
             return true;
         }
         return false;
+    }
+
+
+    private String getSiteURL(HttpServletRequest request) {
+        String siteURL = request.getRequestURL().toString();
+        return siteURL.replace(request.getServletPath(), "") + AUTH_PATH;
     }
 }

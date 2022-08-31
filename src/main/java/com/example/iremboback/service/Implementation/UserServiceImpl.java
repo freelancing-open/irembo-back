@@ -23,14 +23,23 @@ public class UserServiceImpl implements UserService {
     @Override
     public Optional<Users> create(Users user) {
         user.setRoleName(roleService.getAllRoles().get(0));
+        user.setOtp(100000);
         user.setVerified(false);
+        user.setVerificationCode("");
+        user.setToken("");
+        user.setTokenVerified(false);
         return Optional.of(userDB.save(user));
     }
 
     @Override
     public Optional<Users> createAdmin(Users user) {
         user.setRoleName(roleService.getAllRoles().get(1));
+        user.setOtp(100000);
         user.setVerified(true);
+        user.setVerified(false);
+        user.setVerificationCode("");
+        user.setToken("");
+        user.setTokenVerified(false);
         return Optional.of(userDB.save(user));
     }
 
