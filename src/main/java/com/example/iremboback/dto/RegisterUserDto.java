@@ -11,16 +11,15 @@ import java.util.Date;
 @AllArgsConstructor
 @Getter
 @Setter
-public class UserDto {
+public class RegisterUserDto {
 
     private String firstName;
     private String lastName;
     private String email;
+    private String pwd;
     private String gender;
     private Date dob;
     private String maritalStatus;
     private String nationality;
-    private boolean verified;
     private String profilePic;
-    private String role;
 }
