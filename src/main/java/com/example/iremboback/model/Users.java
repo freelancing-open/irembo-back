@@ -40,9 +40,12 @@ public class Users implements Serializable {
     private boolean tokenVerified;  // For Reset Password token verification
     private String token;  // For Reset password verification
 
-    @JoinColumn(name = "roleName", referencedColumnName = "name")
+    @JoinColumn(name = "roleName", referencedColumnName = "id")
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
     private Role roleName;
+
+    @OneToOne(cascade = CascadeType.ALL, mappedBy = "users")
+    private AccountVerification account_status;
 
     public Users(String firstName, String lastName, String email, String password, String gender, Date dob, String maritalStatus, String nationality, String profilePic) {
         this.firstName = firstName;
@@ -54,5 +57,6 @@ public class Users implements Serializable {
         this.maritalStatus = maritalStatus;
         this.nationality = nationality;
         this.profilePic = profilePic;
+        this.account_status = null;
     }
 }

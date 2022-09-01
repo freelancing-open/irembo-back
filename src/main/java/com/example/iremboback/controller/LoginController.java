@@ -17,7 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -72,6 +71,7 @@ public class LoginController {
             response.setApiSuccess(success);
             response.setData(jwt);
 
+            return ResponseEntity.ok().body(response);
         } catch (AuthenticationException e) {
             error.setErrorCode(401);
             error.setErrorMessage("Incorrect Credentials");
@@ -81,45 +81,42 @@ public class LoginController {
             error.setErrorMessage("JWT Not Created");
             response.setApiError(error);
         }
-        return new ResponseEntity<>(response, HttpStatus.OK);
-    }
-
-    @GetMapping(path = "/user", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> getUser(Authentication authentication) {
-        error = new ApiError();
-        UserDto userDto = new UserDto();
-        Optional<Users> users = userService.getUser(authentication.getName());
-        if (users.isEmpty()) {
-            error.setErrorCode(403);
-            error.setErrorMessage("Unauthorized Access");
-            return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
-        }
-        BeanUtils.copyProperties(users.get(), userDto);
-        userDto.setRole(users.get().getRoleName().getName());
-        return new ResponseEntity<>(userDto, HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
     @PostMapping(path = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE )
-    public ResponseEntity<?> createUser(@RequestBody Users user){
+    public ResponseEntity<?> createUser(@RequestBody RegisterUserDto inUser){
         init();
-        if(emailValidation(user)){
-            return ResponseEntity.status(HttpStatus.OK).body(response);
+        if(emailValidation(inUser)){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
-        UserDto userDto = new UserDto();
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        Optional<Users> created = userService.create(user);
+        Users users = new Users();
+        BeanUtils.copyProperties(inUser, users);
+        users.setPassword(passwordEncoder.encode(inUser.getPwd()));
+        Optional<Users> created;
+        synchronized (this){
+            created = userService.create(users);
+        }
         if(created.isPresent()) {
-            BeanUtils.copyProperties(created.get(), userDto);
-            userDto.setRole(created.get().getRoleName().getName());
+            String jwt = createTokenForNewUser(created.get().getEmail());
             success.setCode(HttpStatus.CREATED.value());
             response.setApiSuccess(success);
-            response.setData(userDto);
+            response.setData(jwt);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
         }else{
             error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
             error.setErrorMessage("Not Implemented");
             response.setApiError(error);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
-        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    private String createTokenForNewUser(String email){
+        try {
+            return jwtUtil.createToken(email);
+        } catch (Exception e) {
+           return "";
+        }
     }
 
     @GetMapping(path = "/reset/{email}", produces = MediaType.APPLICATION_JSON_VALUE )
@@ -146,14 +143,14 @@ public class LoginController {
                 error.setErrorCode(404);
                 error.setErrorMessage("User Doesn't Exist");
                 response.setApiError(error);
-                return new ResponseEntity<>(response, HttpStatus.OK);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
         }catch(Exception ex){
             System.err.println(ex.getMessage());
             error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
             error.setErrorMessage("Error Occurred. Try Back!");
             response.setApiError(error);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 
@@ -175,18 +172,19 @@ public class LoginController {
                 success.setCode(HttpStatus.OK.value());
                 response.setApiSuccess(success);
                 response.setData(true);
+                return new ResponseEntity<>(response, HttpStatus.OK);
             }else{
                 error.setErrorCode(404);
                 error.setErrorMessage("Incorrect Reset Password Link");
                 response.setApiError(error);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
-            return new ResponseEntity<>(response, HttpStatus.OK);
         }catch(Exception ex){
             System.err.println(ex.getMessage());
             error.setErrorCode(HttpStatus.NOT_FOUND.value());
             error.setErrorMessage("Link has Expired. Try Back!");
             response.setApiError(error);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 
@@ -207,7 +205,7 @@ public class LoginController {
         error.setErrorCode(404);
         error.setErrorMessage("User Doesn't Exist");
         response.setApiError(error);
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     @GetMapping(path = "/registration/verification/{email}", produces = MediaType.APPLICATION_JSON_VALUE )
@@ -233,14 +231,14 @@ public class LoginController {
                 error.setErrorCode(404);
                 error.setErrorMessage("User Doesn't Exist");
                 response.setApiError(error);
-                return new ResponseEntity<>(response, HttpStatus.OK);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
         }catch(Exception ex){
             System.err.println(ex.getMessage());
             error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
             error.setErrorMessage("Error Occurred. Try Back!");
             response.setApiError(error);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 
@@ -251,12 +249,13 @@ public class LoginController {
             success.setCode(HttpStatus.OK.value());
             response.setApiSuccess(success);
             response.setData("Link Send To Email");
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }else {
             error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
             error.setErrorMessage("Error Occurred. Try Back!");
             response.setApiError(error);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
-        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @GetMapping(path = "/registration/{email}/verification", produces = MediaType.APPLICATION_JSON_VALUE )
@@ -274,17 +273,18 @@ public class LoginController {
                 success.setCode(HttpStatus.OK.value());
                 response.setApiSuccess(success);
                 response.setData(true);
+                return new ResponseEntity<>(response, HttpStatus.OK);
             }else{
                 error.setErrorCode(404);
                 error.setErrorMessage("Incorrect Registration Link");
                 response.setApiError(error);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
-            return new ResponseEntity<>(response, HttpStatus.OK);
         }else{
             error.setErrorCode(404);
             error.setErrorMessage("User Doesn't Exist");
             response.setApiError(error);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 
@@ -307,7 +307,7 @@ public class LoginController {
             error.setErrorCode(404);
             error.setErrorMessage("User Doesn't Exist");
             response.setApiError(error);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 
@@ -325,17 +325,18 @@ public class LoginController {
                 success.setCode(HttpStatus.OK.value());
                 response.setApiSuccess(success);
                 response.setData(true);
+                return new ResponseEntity<>(response, HttpStatus.OK);
             }else{
                 error.setErrorCode(404);
                 error.setErrorMessage("Incorrect OTP Code");
                 response.setApiError(error);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
-            return new ResponseEntity<>(response, HttpStatus.OK);
         }else{
             error.setErrorCode(404);
             error.setErrorMessage("User Doesn't Exist");
             response.setApiError(error);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 
@@ -346,10 +347,10 @@ public class LoginController {
         emailDto = new EmailDto();
     }
 
-    private boolean emailValidation(Users u){
+    private boolean emailValidation(RegisterUserDto u){
         boolean validationResult = emailValidation.isAlreadyRegister(u.getEmail());
         if(validationResult){
-            error.setErrorCode(HttpStatus.NOT_IMPLEMENTED.value());
+            error.setErrorCode(HttpStatus.CONFLICT.value());
             error.setErrorMessage("Email Already Exist");
             response.setApiError(error);
             return true;

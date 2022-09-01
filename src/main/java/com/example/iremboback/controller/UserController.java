@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +27,28 @@ public class UserController {
     private ApiError error;
     private ApiResponse response;
     private ApiSuccess success;
+
+    @GetMapping(path = "/user", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getUser(Authentication authentication) {
+        init();
+        if(authentication == null){
+            error.setErrorCode(401);
+            error.setErrorMessage("Login Again");
+            response.setApiError(error);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+        UserDto userDto = new UserDto();
+        Optional<Users> users = userService.getUser(authentication.getName());
+        if (users.isEmpty()) {
+            error.setErrorCode(401);
+            error.setErrorMessage("Users Doesn't Exist");
+            response.setApiError(error);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+        BeanUtils.copyProperties(users.get(), userDto);
+        userDto.setRole(users.get().getRoleName().getName());
+        return new ResponseEntity<>(userDto, HttpStatus.OK);
+    }
 
 
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE )
@@ -76,7 +99,7 @@ public class UserController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    public void init(){
+    private void init(){
         error = new ApiError();
         response = new ApiResponse();
         success = new ApiSuccess();
